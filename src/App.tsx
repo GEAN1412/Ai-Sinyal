@@ -34,7 +34,7 @@ import {
   Bar,
   BarChart
 } from "recharts";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import axios from "axios";

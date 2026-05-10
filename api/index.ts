@@ -396,9 +396,9 @@ async function startServer() {
         try {
           const quotes = await yf.quote(yahooSymbols);
           const results = quotes.map((q: any) => ({
-            symbol: q.symbol,
-            price: q.regularMarketPrice,
-            change: q.regularMarketChangePercent
+            symbol: q.symbol || "",
+            price: q.regularMarketPrice ?? 0,
+            change: q.regularMarketChangePercent ?? 0
           }));
           setCache(cacheKey, results);
           return res.json(results);
@@ -410,8 +410,8 @@ async function startServer() {
                 const q = await yf.quote(s);
                 return {
                   symbol: s,
-                  price: q.regularMarketPrice,
-                  change: q.regularMarketChangePercent
+                  price: q.regularMarketPrice ?? 0,
+                  change: q.regularMarketChangePercent ?? 0
                 };
              } catch (e) {
                 return { symbol: s, price: 0, change: 0, error: true };
@@ -500,32 +500,12 @@ async function startServer() {
     }
   });
 
-  if (process.env.NODE_ENV !== "production") {
-    console.log("Initializing Vite dev server...");
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
-    });
-  }
-
-  // Only listen if not in serverless environment
-  if (process.env.VERCEL !== "1") {
-    app.listen(PORT, "0.0.0.0", () => {
-      console.log(`Server listening on http://0.0.0.0:${PORT}`);
-    });
-  }
-
+  // Since it's a Vercel function, we don't need app.listen or static serving here
   return app;
 }
 
 const appPromise = startServer();
+
 export default async (req: any, res: any) => {
   const app = await appPromise;
   return app(req, res);

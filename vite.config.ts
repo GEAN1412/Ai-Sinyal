@@ -7,17 +7,6 @@ export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
   return {
     plugins: [react(), tailwindcss()],
-    build: {
-      chunkSizeWarningLimit: 1000,
-      rollupOptions: {
-        output: {
-          manualChunks: {
-            vendor: ['react', 'react-dom', 'recharts', 'lucide-react'],
-            genai: ['@google/generative-ai']
-          }
-        }
-      }
-    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
