@@ -4,6 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import axios from "axios";
 import yfModule from "yahoo-finance2";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -71,6 +72,10 @@ function setCache(key: string, data: any) {
 async function startServer() {
   const app = express();
   const PORT = 3000;
+
+  app.use(express.json({ limit: '10mb' }));
+
+  const ai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
   // API Routes
   app.get("/api/market-data", async (req, res) => {
@@ -425,8 +430,75 @@ async function startServer() {
   // Proxy for Forex (example using exchangerate-api or similar if needed)
   // For now, let's just use Binance for Crypto focus but label it generically.
 
-  // Health check
   app.get("/api/health", (req, res) => res.json({ status: "ok" }));
+
+  app.post("/api/generate-signal", async (req, res) => {
+    const { symbol, data, news } = req.body;
+    
+    if (!data || data.length === 0) {
+      return res.status(400).json({ error: "Missing data" });
+    }
+
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(500).json({ error: "Gemini API key not configured on server" });
+    }
+
+    const currentPrice = data[data.length - 1].close;
+    const recentHistory = data.slice(-20).map((d: any) => ({
+      time: new Date(d.time).toISOString(),
+      close: d.close,
+      high: d.high,
+      low: d.low
+    }));
+
+    const newsContext = news && news.length > 0 
+      ? `Berita Utama Terbaru:\n${news.slice(0, 5).map((n: any) => `- ${n.title} (${n.publisher})`).join('\n')}`
+      : "Tidak ada berita spesifik ditemukan.";
+
+    const prompt = `
+      Sebagai analis finansial profesional, analisis data pasar dan berita berikut untuk ${symbol}.
+      
+      Riwayat harga terakhir (20 interval terakhir):
+      ${JSON.stringify(recentHistory, null, 2)}
+      
+      ${newsContext}
+
+      Harga Saat Ini: ${currentPrice}
+
+      Berdasarkan analisis teknikal DAN sentimen berita fundamental, berikan sinyal trading.
+      Berikan respon dalam format JSON yang ketat dengan kolom berikut:
+      {
+        "action": "BUY" | "SELL" | "HOLD",
+        "price": number (harga entri saat ini),
+        "confidence": number (0-100),
+        "reasoning": string (penjelasan singkat dalam Bahasa Indonesia, sebutkan faktor teknikal dan fundamental),
+        "targets": [number, number] (level take profit),
+        "stopLoss": number
+      }
+    `;
+
+    try {
+      const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const result = await model.generateContent({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: {
+          responseMimeType: "application/json"
+        }
+      });
+
+      const text = result.response.text() || "{}";
+      const aiResult = JSON.parse(text);
+      
+      res.json({
+        symbol,
+        ...aiResult,
+        timestamp: Date.now()
+      });
+    } catch (error: any) {
+      console.error("AI Signal Generation Error:", error.message);
+      res.status(500).json({ error: "AI Analysis failed: " + error.message });
+    }
+  });
 
   if (process.env.NODE_ENV !== "production") {
     console.log("Initializing Vite dev server...");
@@ -453,4 +525,8 @@ async function startServer() {
   return app;
 }
 
-export const appPromise = startServer();
+const appPromise = startServer();
+export default async (req: any, res: any) => {
+  const app = await appPromise;
+  return app(req, res);
+};
