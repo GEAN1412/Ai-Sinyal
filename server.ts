@@ -428,10 +428,6 @@ async function startServer() {
   // Health check
   app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 
-  const server = app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server listening on http://0.0.0.0:${PORT}`);
-  });
-
   if (process.env.NODE_ENV !== "production") {
     console.log("Initializing Vite dev server...");
     const vite = await createViteServer({
@@ -446,6 +442,15 @@ async function startServer() {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
+
+  // Only listen if not in serverless environment
+  if (process.env.VERCEL !== "1") {
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server listening on http://0.0.0.0:${PORT}`);
+    });
+  }
+
+  return app;
 }
 
-startServer();
+export const appPromise = startServer();

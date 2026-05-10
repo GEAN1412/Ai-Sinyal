@@ -353,9 +353,9 @@ export default function App() {
                         </tr>
                       </thead>
                       <tbody>
-                        {fundamentals.earningsHistory.map((h: any, idx: number) => {
+                        {fundamentals.earningsHistory?.map((h: any, idx: number) => {
                           const year = new Date(h.date).getFullYear();
-                          const prev = fundamentals.earningsHistory[idx + 1];
+                          const prev = fundamentals.earningsHistory?.[idx + 1];
                           const growth = prev ? ((h.netIncome - prev.netIncome) / Math.abs(prev.netIncome)) * 100 : null;
                           return (
                             <tr key={`${year}-${idx}`} className="border-b border-white/5 last:border-0">
@@ -393,7 +393,7 @@ export default function App() {
                         </tr>
                       </thead>
                       <tbody>
-                        {fundamentals.balanceHistory.map((h: any, idx: number) => {
+                        {fundamentals.balanceHistory?.map((h: any, idx: number) => {
                           const year = new Date(h.date).getFullYear();
                           return (
                             <tr key={`${year}-${idx}`} className="border-b border-white/5 last:border-0">
