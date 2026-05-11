@@ -50,7 +50,7 @@ export const MarketResumeCard: React.FC<SummaryProps> = ({ title, category, symb
         {data.map((item, idx) => (
           <div key={idx} className="flex items-center justify-between group cursor-pointer hover:bg-white/5 p-1 rounded-lg transition-all">
             <span className="font-mono text-xs font-bold text-white/80 uppercase">
-                {item.symbol.replace('=X', '').replace('.JK', '').replace('USDT', '')}
+                {(item.symbol || '').replace('=X', '').replace('.JK', '').replace('USDT', '')}
             </span>
             <div className="text-right">
               <div className="font-mono text-sm font-bold">{formatCurrency(item.price, item.symbol, category as any)}</div>

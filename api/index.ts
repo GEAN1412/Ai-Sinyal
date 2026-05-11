@@ -75,7 +75,8 @@ async function startServer() {
 
   app.use(express.json({ limit: '10mb' }));
 
-  const ai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+  const apiKey = process.env.GEMINI_API_KEY;
+  const ai = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 
   // API Routes
   app.get("/api/market-data", async (req, res) => {
@@ -478,6 +479,9 @@ async function startServer() {
     `;
 
     try {
+      if (!ai) {
+        throw new Error("AI service not initialized (missing API key)");
+      }
       const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
       const result = await model.generateContent({
         contents: [{ role: "user", parts: [{ text: prompt }] }],

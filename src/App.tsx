@@ -34,7 +34,7 @@ import {
   Bar,
   BarChart
 } from "recharts";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import axios from "axios";
@@ -185,8 +185,8 @@ export default function App() {
   };
 
   const currentPrice = data[data.length - 1]?.close || 0;
-  const priceChange = data.length > 1 ? currentPrice - data[data.length - 2].close : 0;
-  const priceChangePct = data.length > 1 ? (priceChange / data[data.length - 2].close) * 100 : 0;
+  const priceChange = data.length > 1 && data[data.length - 2]?.close ? currentPrice - data[data.length - 2].close : 0;
+  const priceChangePct = data.length > 1 && data[data.length - 2]?.close ? (priceChange / data[data.length - 2].close) * 100 : 0;
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white font-sans selection:bg-emerald-500/30">
