@@ -10,10 +10,6 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Initialize AI if key is available
-const apiKey = process.env.GEMINI_API_KEY;
-const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
-
 // Initialize Yahoo Finance instance correctly as per v2/v3 requirements
 const yf = new (yfModule as any)();
 
@@ -453,14 +449,13 @@ async function startServer() {
       return res.status(400).json({ error: "Missing data" });
     }
 
-    if (!process.env.GEMINI_API_KEY) {
+    const currentApiKey = process.env.GEMINI_API_KEY;
+    if (!currentApiKey) {
       console.error("GEMINI_API_KEY is not set in environment variables");
-      return res.status(500).json({ error: "Gemini API key not configured on server. Please add it to your environment variables." });
+      return res.status(500).json({ error: "Gemini API key not configured on server. Please add GEMINI_API_KEY to your Vercel Environment Variables." });
     }
 
-    if (!genAI) {
-      return res.status(500).json({ error: "AI service failed to initialize." });
-    }
+    const genAIInstance = new GoogleGenerativeAI(currentApiKey);
 
     const currentPrice = data[data.length - 1].close;
     const recentHistory = data.slice(-20).map((d: any) => ({
@@ -497,7 +492,7 @@ async function startServer() {
     `;
 
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = genAIInstance.getGenerativeModel({ model: "gemini-1.5-flash" });
       const result = await model.generateContent(prompt);
       const responseText = result.response.text();
       
