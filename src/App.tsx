@@ -117,7 +117,7 @@ export default function App() {
     }
   }, [symbol, category]);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (retries = 2) => {
     if (!symbol || symbol.length < 3 && !symbol.startsWith("^")) {
       setData([]);
       return;
@@ -126,18 +126,24 @@ export default function App() {
     fetchFundamentals();
     try {
       const marketRes = await axios.get(`/api/market-data`, {
-        params: { symbol, interval, limit: 100, type: category }
+        params: { symbol, interval, limit: 100, type: category },
+        timeout: 15000 // 15s timeout
       });
       setData(marketRes.data || []);
       setError(null);
     } catch (err: any) {
-      const message = err.response?.data?.error || "Gagal mengambil data pasar.";
-      setError(message);
-      console.error(err);
+      console.error("Fetch data error:", err.message);
+      if (retries > 0) {
+        console.log(`Retrying fetch data for ${symbol}... (${retries} left)`);
+        setTimeout(() => fetchData(retries - 1), 2000);
+      } else {
+        const message = err.response?.data?.error || "Gagal mengambil data pasar. Jaringan sibuk atau simbol tidak valid.";
+        setError(message);
+      }
     } finally {
       setLoading(false);
     }
-  }, [symbol, interval, category]);
+  }, [symbol, interval, category, fetchFundamentals]);
 
   const fetchNews = useCallback(async () => {
     if (!symbol || symbol.length < 3 && !symbol.startsWith("^")) {
@@ -156,6 +162,16 @@ export default function App() {
       setNewsLoading(false);
     }
   }, [symbol, category]);
+
+  useEffect(() => {
+    // Check backend health
+    axios.get("/api/health")
+      .then(() => console.log("Backend connection healthy"))
+      .catch(err => {
+        console.error("Backend unreachable:", err);
+        setError("Koneksi ke server backend gagal. Pastikan server sedang berjalan.");
+      });
+  }, []);
 
   useEffect(() => {
     fetchData();

@@ -1,8 +1,8 @@
 import express from "express";
-import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
 import axios from "axios";
+import cors from "cors";
 import yfModule from "yahoo-finance2";
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
@@ -79,8 +79,13 @@ async function startServer() {
   const PORT = 3000;
 
   app.use(express.json({ limit: '10mb' }));
+  app.use(cors());
 
-  // API Routes
+  // Logging middleware
+  app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+    next();
+  });
   app.get("/api/market-data", async (req, res) => {
     const { symbol = "BTCUSDT", interval = "1h", limit = "50", type = "crypto" } = req.query;
     
@@ -373,19 +378,23 @@ async function startServer() {
     const cachedData = getFromCache(cacheKey, 30); // Short cache for summary (30s)
     if (cachedData) return res.json(cachedData);
 
+    console.log(`Fetching ${category} summary for: ${symbols}`);
+
     try {
       if (category === "crypto") {
         const results = await Promise.all(symbolList.map(async (s) => {
           try {
             const resp = await axios.get("https://api.binance.com/api/v3/ticker/24hr", {
-              params: { symbol: s }
+              params: { symbol: s },
+              timeout: 5000
             });
             return {
               symbol: s,
               price: parseFloat(resp.data.lastPrice),
               change: parseFloat(resp.data.priceChangePercent)
             };
-          } catch (e) {
+          } catch (e: any) {
+            console.error(`Binance summary error for ${s}:`, e.message);
             return { symbol: s, price: 0, change: 0, error: true };
           }
         }));
@@ -397,7 +406,12 @@ async function startServer() {
         // Yahoo Finance can fetch multiple quotes at once
         const yahooSymbols = symbolList.map(s => normalizeForYahoo(s));
         try {
-          const quotes = await yf.quote(yahooSymbols);
+          // Add timeout for Yahoo
+          const quotes = await Promise.race([
+            yf.quote(yahooSymbols),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("Yahoo Quote Timeout")), 10000))
+          ]) as any;
+
           const results = quotes.map((q: any) => ({
             symbol: q.symbol || "",
             price: q.regularMarketPrice ?? 0,
@@ -416,7 +430,7 @@ async function startServer() {
                   price: q.regularMarketPrice ?? 0,
                   change: q.regularMarketChangePercent ?? 0
                 };
-             } catch (e) {
+             } catch (e: any) {
                 return { symbol: s, price: 0, change: 0, error: true };
              }
           }));
@@ -425,8 +439,8 @@ async function startServer() {
         }
       }
     } catch (error: any) {
-      console.error("Market summary error:", error.message);
-      res.status(500).json({ error: error.message });
+      console.error("Market summary total error:", error.message);
+      res.status(500).json({ error: error.message || "Unknown error" });
     }
   });
 
@@ -506,19 +520,19 @@ async function startServer() {
     }
   });
 
-  if (process.env.NODE_ENV !== "production") {
+  if (process.env.NODE_ENV !== "production" && process.env.VERCEL !== "1") {
     console.log("Initializing Vite dev server...");
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
     app.use(vite.middlewares);
-  } else {
-    // Both on Vercel and local production
+  } else if (process.env.VERCEL !== "1") {
+    // Local production only
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
     app.get("*", (req, res) => {
-      // Don't serve index.html for API routes
       if (req.path.startsWith('/api')) return res.status(404).json({ error: 'API not found' });
       res.sendFile(path.join(distPath, "index.html"));
     });

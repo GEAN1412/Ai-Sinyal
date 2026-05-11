@@ -19,23 +19,36 @@ export const MarketResumeCard: React.FC<SummaryProps> = ({ title, category, symb
   const [data, setData] = useState<MarketData[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchSummary = async () => {
+  const fetchSummary = async (retries = 2) => {
     try {
       const res = await axios.get('/api/market-summary', {
-        params: { symbols: symbols.join(','), category }
+        params: { symbols: symbols.join(','), category },
+        timeout: 15000 // 15s timeout
       });
       setData(res.data);
-    } catch (err) {
-      console.error(`Failed to fetch ${title} summary:`, err);
+    } catch (err: any) {
+      console.error(`Failed to fetch ${title} summary:`, err.message);
+      if (retries > 0) {
+        console.log(`Retrying ${title} summary... (${retries} left)`);
+        setTimeout(() => fetchSummary(retries - 1), 2000);
+      }
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchSummary();
-    const interval = setInterval(fetchSummary, 30000); // 30s auto-refresh
-    return () => clearInterval(interval);
+    // Stagger initial fetch to avoid simultaneous pressure
+    const delay = Math.random() * 2000;
+    const timer = setTimeout(() => {
+      fetchSummary();
+    }, delay);
+    
+    const interval = setInterval(fetchSummary, 45000); // 45s auto-refresh (relaxed from 30s)
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
   }, []);
 
   return (
