@@ -449,13 +449,22 @@ async function startServer() {
       return res.status(400).json({ error: "Missing data" });
     }
 
-    const currentApiKey = process.env.GEMINI_API_KEY;
+    const currentApiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
     if (!currentApiKey) {
-      console.error("GEMINI_API_KEY is not set in environment variables");
-      return res.status(500).json({ error: "Gemini API key not configured on server. Please add GEMINI_API_KEY to your Vercel Environment Variables." });
+      console.error("CRITICAL: GEMINI_API_KEY is missing from environment");
+      return res.status(500).json({ 
+        error: "Server Error: API Key tidak ditemukan. Pastikan 'GEMINI_API_KEY' sudah ditambahkan di Vercel Environment Variables dan Anda sudah melakukan RE-DEPLOY.",
+        debug: "Environment check failed"
+      });
     }
 
-    const genAIInstance = new GoogleGenerativeAI(currentApiKey);
+    let genAIInstance;
+    try {
+      genAIInstance = new GoogleGenerativeAI(currentApiKey);
+    } catch (initErr: any) {
+      console.error("AI Initialization Error:", initErr.message);
+      return res.status(500).json({ error: "Gagal inisialisasi AI: " + initErr.message });
+    }
 
     const currentPrice = data[data.length - 1].close;
     const recentHistory = data.slice(-20).map((d: any) => ({
@@ -493,12 +502,24 @@ async function startServer() {
 
     try {
       const model = genAIInstance.getGenerativeModel({ model: "gemini-1.5-flash" });
-      const result = await model.generateContent(prompt);
-      const responseText = result.response.text();
       
+      console.log(`Generating signal for ${symbol}...`);
+      const result = await model.generateContent(prompt);
+      const responseText = await result.response.text();
+      
+      if (!responseText) {
+        throw new Error("AI mengembalikan respon kosong.");
+      }
+
       // Clean potential markdown markdown code blocks if present
       const cleanJson = responseText.replace(/```json\n?|\n?```/g, '').trim();
-      const aiResult = JSON.parse(cleanJson);
+      let aiResult;
+      try {
+        aiResult = JSON.parse(cleanJson);
+      } catch (jsonErr) {
+        console.error("JSON Parse Error. Raw response:", responseText);
+        throw new Error("AI mengembalikan format data yang tidak valid.");
+      }
       
       res.json({
         symbol,
@@ -506,12 +527,21 @@ async function startServer() {
         timestamp: Date.now()
       });
     } catch (error: any) {
-      console.error("AI Signal Generation Error:", error.message);
-      // Check for specific API key errors
-      if (error.message?.includes("API key not valid")) {
-        return res.status(401).json({ error: "API Key Gemini tidak valid. Periksa pengaturan API Key Anda." });
+      console.error("AI Signal Generation Error:", error.message, error.stack);
+      
+      // Handle specific API errors
+      if (error.message?.includes("API key not valid") || error.status === 403) {
+        return res.status(401).json({ error: "API Key Gemini tidak valid atau tidak diizinkan. Periksa kembali API Key Anda di Google AI Studio." });
       }
-      res.status(500).json({ error: "AI Analysis failed: " + (error.message || "Unknown error") });
+      
+      if (error.message?.includes("quota") || error.status === 429) {
+        return res.status(429).json({ error: "Batas pemakaian (quota) AI tercapai. Silakan coba lagi nanti." });
+      }
+
+      res.status(500).json({ 
+        error: "Analisa AI Gagal: " + (error.message || "Unknown error"),
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
     }
   });
 
