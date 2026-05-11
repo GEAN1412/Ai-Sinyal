@@ -34,7 +34,7 @@ import {
   Bar,
   BarChart
 } from "recharts";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import axios from "axios";
@@ -162,7 +162,10 @@ export default function App() {
   }, [fetchData]);
 
   useEffect(() => {
-    fetchNews();
+    const timer = setTimeout(() => {
+        fetchNews();
+    }, 1000); // 1s delay to prioritize chart data
+    return () => clearTimeout(timer);
   }, [fetchNews]);
 
   // Handle category change
@@ -174,11 +177,18 @@ export default function App() {
   const handleAnalyze = async () => {
     if (data.length === 0) return;
     setAnalyzing(true);
+    setSignal(null);
+    setError(null);
     try {
       const newSignal = await generateSignal(symbol, data, news);
+      if (!newSignal) {
+        throw new Error("Analisis AI tidak mengembalikan hasil. Pastikan data cukup.");
+      }
       setSignal(newSignal);
-    } catch (err) {
-      setError("Analisis AI gagal. Cobalah sesaat lagi.");
+    } catch (err: any) {
+      console.error("AI Analysis Error:", err);
+      const message = err.message || "Analisis AI gagal. Cobalah sesaat lagi.";
+      setError(message);
     } finally {
       setAnalyzing(false);
     }
