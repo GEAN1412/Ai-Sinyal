@@ -21,7 +21,9 @@ import {
   ExternalLink,
   Database,
   FileText,
-  History
+  History,
+  Key,
+  Settings
 } from "lucide-react";
 import { 
   AreaChart, 
@@ -103,6 +105,8 @@ export default function App() {
   const [fundamentals, setFundamentals] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [showDashboard, setShowDashboard] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
+  const [tempApiKey, setTempApiKey] = useState(localStorage.getItem("GEMINI_API_KEY") || "");
 
   const fetchFundamentals = useCallback(async () => {
     if (category !== "saham" || !symbol || symbol.startsWith("^")) {
@@ -282,6 +286,13 @@ export default function App() {
               title="Toggle Dashboard"
             >
               <BarChart3 className="w-5 h-5" />
+            </button>
+            <button 
+              onClick={() => setShowSettings(true)}
+              className="p-2 hover:bg-white/5 rounded-lg transition-colors group"
+              title="Settings"
+            >
+              <Settings className="w-4 h-4 text-white/60 group-hover:text-white" />
             </button>
             <button 
               onClick={fetchData}
@@ -723,6 +734,81 @@ export default function App() {
           </div>
         </div>
       </main>
+
+      {/* Settings Modal */}
+      <AnimatePresence>
+        {showSettings && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-zinc-900 border border-white/10 p-6 rounded-2xl w-full max-w-md shadow-2xl"
+            >
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-emerald-500/20 rounded-lg">
+                  <Settings className="w-5 h-5 text-emerald-500" />
+                </div>
+                <h3 className="text-xl font-bold text-white">Settings</h3>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-white/40 uppercase tracking-widest mb-1.5 ml-1">
+                    Gemini API Key
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="password"
+                      value={tempApiKey}
+                      onChange={(e) => setTempApiKey(e.target.value)}
+                      placeholder="AIza..."
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-10 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-mono"
+                    />
+                    <Key className="w-4 h-4 text-white/20 absolute left-4 top-1/2 -translate-y-1/2" />
+                  </div>
+                  <p className="mt-2 text-[10px] text-white/30 leading-relaxed uppercase font-bold ml-1">
+                    Kunci Anda disimpan secara lokal di browser. Ambil API Key di <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline">Google AI Studio</a>.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-8">
+                <button
+                  onClick={() => {
+                    localStorage.removeItem("GEMINI_API_KEY");
+                    setTempApiKey("");
+                    setShowSettings(false);
+                  }}
+                  className="flex-1 py-2 rounded-xl text-xs font-bold uppercase tracking-widest text-red-400 border border-red-400/20 hover:bg-red-400/10 transition-colors"
+                >
+                  Reset
+                </button>
+                <button
+                  onClick={() => {
+                    localStorage.setItem("GEMINI_API_KEY", tempApiKey.trim());
+                    setShowSettings(false);
+                  }}
+                  className="flex-1 py-2 bg-emerald-500 text-black rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-emerald-400 transition-colors"
+                >
+                  Simpan
+                </button>
+                <button
+                  onClick={() => setShowSettings(false)}
+                  className="flex-1 py-2 bg-white/10 text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-white/20 transition-colors"
+                >
+                  Tutup
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       
       {/* Background Decor */}
       <div className="fixed inset-0 pointer-events-none opacity-20 overflow-hidden -z-10">

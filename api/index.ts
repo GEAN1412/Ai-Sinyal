@@ -5,8 +5,6 @@ import axios from "axios";
 import cors from "cors";
 import yfModule from "yahoo-finance2";
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -39,8 +37,9 @@ function normalizeForYahoo(symbol: string): string {
   
   // Custom mappings for common failures
   const mappings: Record<string, string> = {
-    "XAUUSD=X": "GC=F", // Gold Mapping to Futures as it's more reliable for historical data
+    "XAUUSD=X": "GC=F", 
     "GOLD": "GC=F",
+    "SILVER": "SI=F",
     "BTCUSDT": "BTC-USD",
     "ETHUSDT": "ETH-USD",
     "XRPUSDT": "XRP-USD",
@@ -183,8 +182,17 @@ async function startServer() {
 
             // Fallback for Gold if Spot fails
             if ((!result || (interval === '1d' ? result.length === 0 : !result.quotes || result.quotes.length === 0)) && targetSymbol === "GC=F") {
-              // This is already the fallback symbol, if it fails maybe try XAUUSD=X even if it's less reliable for historical
                const altSymbol = "XAUUSD=X";
+               if (interval === '1d') {
+                result = await yf.historical(altSymbol, { period1: period1 }, { validateResult: false });
+               } else {
+                result = await yf.chart(altSymbol, { period1: period1, interval: intervalMap[interval as string] || '1h' }, { validateResult: false });
+               }
+            }
+
+            // Fallback for Silver if Spot fails
+            if ((!result || (interval === '1d' ? result.length === 0 : !result.quotes || result.quotes.length === 0)) && targetSymbol === "XAGUSD=X") {
+               const altSymbol = "SI=F"; // Silver Futures as fallback
                if (interval === '1d') {
                 result = await yf.historical(altSymbol, { period1: period1 }, { validateResult: false });
                } else {
@@ -441,109 +449,6 @@ async function startServer() {
   });
 
   app.get("/api/health", (req, res) => res.json({ status: "ok" }));
-
-  app.post("/api/generate-signal", async (req, res) => {
-    const { symbol, data, news } = req.body;
-    
-    if (!data || data.length === 0) {
-      return res.status(400).json({ error: "Missing data" });
-    }
-
-    const currentApiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
-    if (!currentApiKey) {
-      console.error("CRITICAL: GEMINI_API_KEY is missing from environment");
-      return res.status(500).json({ 
-        error: "Server Error: API Key tidak ditemukan. Pastikan 'GEMINI_API_KEY' sudah ditambahkan di Vercel Environment Variables dan Anda sudah melakukan RE-DEPLOY.",
-        debug: "Environment check failed"
-      });
-    }
-
-    let genAIInstance;
-    try {
-      genAIInstance = new GoogleGenerativeAI(currentApiKey);
-    } catch (initErr: any) {
-      console.error("AI Initialization Error:", initErr.message);
-      return res.status(500).json({ error: "Gagal inisialisasi AI: " + initErr.message });
-    }
-
-    const currentPrice = data[data.length - 1].close;
-    const recentHistory = data.slice(-20).map((d: any) => ({
-      time: new Date(d.time).toISOString(),
-      close: d.close,
-      high: d.high,
-      low: d.low
-    }));
-
-    const newsContext = news && news.length > 0 
-      ? `Berita Utama Terbaru:\n${news.slice(0, 5).map((n: any) => `- ${n.title} (${n.publisher})`).join('\n')}`
-      : "Tidak ada berita spesifik ditemukan.";
-
-    const prompt = `
-      Sebagai analis finansial profesional, analisis data pasar dan berita berikut untuk ${symbol}.
-      
-      Riwayat harga terakhir (20 interval terakhir):
-      ${JSON.stringify(recentHistory, null, 2)}
-      
-      ${newsContext}
-
-      Harga Saat Ini: ${currentPrice}
-
-      Berdasarkan analisis teknikal DAN sentimen berita fundamental, berikan sinyal trading.
-      Berikan respon dalam format JSON yang ketat dengan kolom berikut:
-      {
-        "action": "BUY" | "SELL" | "HOLD",
-        "price": number (harga entri saat ini),
-        "confidence": number (0-100),
-        "reasoning": string (penjelasan singkat dalam Bahasa Indonesia, sebutkan faktor teknikal dan fundamental),
-        "targets": [number, number] (level take profit),
-        "stopLoss": number
-      }
-    `;
-
-    try {
-      const model = genAIInstance.getGenerativeModel({ model: "gemini-1.5-flash" });
-      
-      console.log(`Generating signal for ${symbol}...`);
-      const result = await model.generateContent(prompt);
-      const responseText = await result.response.text();
-      
-      if (!responseText) {
-        throw new Error("AI mengembalikan respon kosong.");
-      }
-
-      // Clean potential markdown markdown code blocks if present
-      const cleanJson = responseText.replace(/```json\n?|\n?```/g, '').trim();
-      let aiResult;
-      try {
-        aiResult = JSON.parse(cleanJson);
-      } catch (jsonErr) {
-        console.error("JSON Parse Error. Raw response:", responseText);
-        throw new Error("AI mengembalikan format data yang tidak valid.");
-      }
-      
-      res.json({
-        symbol,
-        ...aiResult,
-        timestamp: Date.now()
-      });
-    } catch (error: any) {
-      console.error("AI Signal Generation Error:", error.message, error.stack);
-      
-      // Handle specific API errors
-      if (error.message?.includes("API key not valid") || error.status === 403) {
-        return res.status(401).json({ error: "API Key Gemini tidak valid atau tidak diizinkan. Periksa kembali API Key Anda di Google AI Studio." });
-      }
-      
-      if (error.message?.includes("quota") || error.status === 429) {
-        return res.status(429).json({ error: "Batas pemakaian (quota) AI tercapai. Silakan coba lagi nanti." });
-      }
-
-      res.status(500).json({ 
-        error: "Analisa AI Gagal: " + (error.message || "Unknown error"),
-        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
-      });
-    }
-  });
 
   if (process.env.NODE_ENV !== "production" && process.env.VERCEL !== "1") {
     console.log("Initializing Vite dev server...");
