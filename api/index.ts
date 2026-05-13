@@ -3,19 +3,15 @@ import path from "path";
 import { fileURLToPath } from "url";
 import axios from "axios";
 import cors from "cors";
-import yfModule from "yahoo-finance2";
+import yahooFinance from "yahoo-finance2";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Initialize Yahoo Finance instance correctly as per v2/v3 requirements
-const yf = new (yfModule as any)();
-
-if (yf && typeof (yf as any).setGlobalConfig === 'function') {
-  (yf as any).setGlobalConfig({
-    validation: { logErrors: false, errorHandler: () => {} }
-  });
-}
+// Configure Yahoo Finance
+yahooFinance.setGlobalConfig({
+  validation: { logErrors: false, errorHandler: () => {} }
+});
 
 // Simple in-memory cache
 const cache = new Map<string, { data: any; timestamp: number }>();
@@ -136,8 +132,6 @@ async function startServer() {
 
       // Yahoo Finance Block (or fallback for crypto)
       if (type !== "crypto" || targetSymbol.includes("-USD") || targetSymbol.includes("-BTC")) {
-        if (!yf) throw new Error("Yahoo Finance service unavailable");
-
         // Ensure symbol is Yahoo-friendly
         targetSymbol = normalizeForYahoo(targetSymbol);
 
@@ -170,39 +164,30 @@ async function startServer() {
         const dataPromise = (async () => {
           try {
             let result: any;
-            if (interval === '1d') {
-              result = await yf.historical(targetSymbol, { period1: period1 }, { validateResult: false });
-            } else {
-              const queryOptions: any = {
-                period1: period1,
-                interval: intervalMap[interval as string] || '1h',
-              };
-              result = await yf.chart(targetSymbol, queryOptions, { validateResult: false });
-            }
+            const queryOptions: any = {
+              period1,
+              period2: new Date(),
+              interval: intervalMap[interval as string] || '1h',
+            };
+
+            // Use chart for everything as it's more robust in v2/v3
+            result = await yahooFinance.chart(targetSymbol, queryOptions, { validateResult: false });
 
             // Fallback for Gold if Spot fails
-            if ((!result || (interval === '1d' ? result.length === 0 : !result.quotes || result.quotes.length === 0)) && targetSymbol === "GC=F") {
+            if ((!result || !result.quotes || result.quotes.length === 0) && targetSymbol === "GC=F") {
                const altSymbol = "XAUUSD=X";
-               if (interval === '1d') {
-                result = await yf.historical(altSymbol, { period1: period1 }, { validateResult: false });
-               } else {
-                result = await yf.chart(altSymbol, { period1: period1, interval: intervalMap[interval as string] || '1h' }, { validateResult: false });
-               }
+               result = await yahooFinance.chart(altSymbol, queryOptions, { validateResult: false });
             }
 
             // Fallback for Silver if Spot fails
-            if ((!result || (interval === '1d' ? result.length === 0 : !result.quotes || result.quotes.length === 0)) && targetSymbol === "XAGUSD=X") {
+            if ((!result || !result.quotes || result.quotes.length === 0) && targetSymbol === "XAGUSD=X") {
                const altSymbol = "SI=F"; // Silver Futures as fallback
-               if (interval === '1d') {
-                result = await yf.historical(altSymbol, { period1: period1 }, { validateResult: false });
-               } else {
-                result = await yf.chart(altSymbol, { period1: period1, interval: intervalMap[interval as string] || '1h' }, { validateResult: false });
-               }
+               result = await yahooFinance.chart(altSymbol, queryOptions, { validateResult: false });
             }
 
-            if (!result) return [];
+            if (!result || !result.quotes) return [];
 
-            const quotes = interval === '1d' ? result : (result.quotes || []);
+            const quotes = result.quotes || [];
             
             return quotes.map((q: any) => ({
               time: q.date.getTime(),
@@ -270,10 +255,8 @@ async function startServer() {
       : searchSymbol;
 
     try {
-      if (!yf) throw new Error("Yahoo Finance service unavailable");
-      
       // Use search which is more tolerant than specific news modules
-      const result: any = await yf.search(searchQuery);
+      const result: any = await yahooFinance.search(searchQuery);
       
       const news = result.news?.map((n: any) => ({
         title: n.title,
@@ -306,8 +289,6 @@ async function startServer() {
     if (cachedData) return res.json(cachedData);
 
     try {
-      if (!yf) throw new Error("Yahoo Finance unavailable");
-
       // Normalize before fetching
       targetSymbol = normalizeForYahoo(targetSymbol);
 
@@ -319,7 +300,7 @@ async function startServer() {
       // Fetch deep financial modules with robust error handling
       let summary: any = null;
       try {
-        summary = await (yf as any).quoteSummary(targetSymbol, {
+        summary = await yahooFinance.quoteSummary(targetSymbol, {
           modules: [
             "defaultKeyStatistics",
             "financialData",
@@ -405,14 +386,12 @@ async function startServer() {
         setCache(cacheKey, results);
         return res.json(results);
       } else {
-        if (!yf) throw new Error("Yahoo Finance service unavailable");
-        
         // Yahoo Finance can fetch multiple quotes at once
         const yahooSymbols = symbolList.map(s => normalizeForYahoo(s));
         try {
           // Add timeout for Yahoo
           const quotes = await Promise.race([
-            yf.quote(yahooSymbols),
+            yahooFinance.quote(yahooSymbols),
             new Promise((_, reject) => setTimeout(() => reject(new Error("Yahoo Quote Timeout")), 10000))
           ]) as any;
 
@@ -428,7 +407,7 @@ async function startServer() {
           // Fallback to sequential if batch fails
           const results = await Promise.all(yahooSymbols.map(async (s) => {
              try {
-                const q = await yf.quote(s);
+                const q = await yahooFinance.quote(s);
                 return {
                   symbol: s,
                   price: q.regularMarketPrice ?? 0,
