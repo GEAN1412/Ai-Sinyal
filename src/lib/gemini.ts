@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { format } from "date-fns";
 
 export interface MarketData {
   time: number;
@@ -40,63 +41,79 @@ export const generateSignal = async (symbol: string, data: MarketData[], news?: 
     const ai = new GoogleGenAI({ apiKey });
     
     const currentPrice = data[data.length - 1].close;
-    const recentHistory = data.slice(-20).map((d) => ({
-      time: new Date(d.time).toISOString(),
-      close: d.close,
-      high: d.high,
-      low: d.low
+    const recentHistory = data.slice(-40).map((d) => ({
+      time: format(d.time, 'HH:mm'),
+      price: d.close,
     }));
 
     const newsContext = news && news.length > 0 
       ? `Berita Utama Terbaru:\n${news.slice(0, 5).map((n) => `- ${n.title} (${n.publisher})`).join('\n')}`
-      : "Tidak ada berita spesifik ditemukan.";
+      : "Tidak ada berita spesifik.";
 
     const prompt = `
-      Sebagai analis finansial profesional, analisis data pasar dan berita berikut untuk ${symbol}.
+      As a professional financial analyst, analyze this data for ${symbol}.
       
-      Riwayat harga terakhir (20 interval terakhir):
-      ${JSON.stringify(recentHistory, null, 2)}
+      Last 40 price points:
+      ${JSON.stringify(recentHistory)}
       
       ${newsContext}
 
-      Harga Saat Ini: ${currentPrice}
+      Current Price: ${currentPrice}
 
-      Berdasarkan analisis teknikal DAN sentimen berita fundamental, berikan sinyal trading.
-      Berikan respon dalam format JSON yang ketat dengan kolom berikut:
+      Provide a trading signal in JSON format:
       {
         "action": "BUY" | "SELL" | "HOLD",
-        "price": number (harga entri saat ini),
+        "price": number,
         "confidence": number (0-100),
-        "reasoning": string (penjelasan singkat dalam Bahasa Indonesia, sebutkan faktor teknikal dan fundamental),
-        "targets": [number, number] (level take profit),
+        "reasoning": "brief explanation in Indonesian",
+        "targets": [tp1, tp2],
         "stopLoss": number
       }
     `;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: [{ parts: [{ text: prompt }] }],
-      config: {
-        responseMimeType: "application/json"
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-flash-latest",
+        contents: [{ parts: [{ text: prompt }] }],
+        config: {
+          responseMimeType: "application/json"
+        }
+      });
+
+      if (!response.text) {
+        throw new Error("AI tidak memberikan respon teks.");
       }
-    });
 
-    if (!response.text) {
-      throw new Error("Gagal mendapatkan respon dari AI.");
+      const aiResult = JSON.parse(response.text);
+      
+      return {
+        symbol,
+        ...aiResult,
+        timestamp: Date.now()
+      };
+    } catch (modelError: any) {
+      console.warn("Model gemini-flash-latest failed, trying gemini-3-flash-preview...", modelError.message);
+      // Fallback
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: [{ parts: [{ text: prompt }] }],
+        config: {
+          responseMimeType: "application/json"
+        }
+      });
+      
+      if (!response.text) throw new Error("AI tidak memberikan respon teks.");
+      const aiResult = JSON.parse(response.text);
+      return { symbol, ...aiResult, timestamp: Date.now() };
     }
-
-    const aiResult = JSON.parse(response.text);
-    
-    return {
-      symbol,
-      ...aiResult,
-      timestamp: Date.now()
-    };
   } catch (error: any) {
     console.error("AI Signal Generation Error:", error.message);
     if (error.message?.includes("API_KEY_INVALID") || error.message?.includes("API key not valid")) {
-      throw new Error("API Key Gemini tidak valid. Silakan periksa di menu Settings.");
+      throw new Error("API Key Gemini tidak valid. Pastikan Anda menyalin API KEY (biasanya diawali 'AIza') dari Google AI Studio, bukan NAMA MODEL.");
     }
-    throw error;
+    if (error.message?.includes("not found") || error.message?.includes("404")) {
+      throw new Error("Model AI tidak ditemukan. Silakan periksa apakah API Key Anda memiliki akses ke model Gemini.");
+    }
+    throw new Error(`Gagal Analisa AI: ${error.message}`);
   }
 };

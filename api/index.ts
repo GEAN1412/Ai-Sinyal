@@ -9,7 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Configure Yahoo Finance
-yahooFinance.setGlobalConfig({
+(yahooFinance as any).setGlobalConfig({
   validation: { logErrors: false, errorHandler: () => {} }
 });
 
@@ -28,14 +28,15 @@ function getFromCache(key: string, ttl = CACHE_TTL) {
 }
 
 // Helper to normalize symbols for Yahoo Finance
-function normalizeForYahoo(symbol: string): string {
+function normalizeForYahoo(symbol: string, type?: string): string {
   let s = symbol.toUpperCase().trim();
   
   // Custom mappings for common failures
   const mappings: Record<string, string> = {
-    "XAUUSD=X": "GC=F", 
     "GOLD": "GC=F",
     "SILVER": "SI=F",
+    "XAUUSD=X": "GC=F",
+    "XAGUSD=X": "SI=F",
     "BTCUSDT": "BTC-USD",
     "ETHUSDT": "ETH-USD",
     "XRPUSDT": "XRP-USD",
@@ -47,17 +48,24 @@ function normalizeForYahoo(symbol: string): string {
 
   if (mappings[s]) return mappings[s];
 
-  // Crypto normalization: BTCUSDT -> BTC-USD (regex for broader support)
+  // IHSG Index
+  if (s === "IHSG" || s === "COMPOSITE") return "^JKSE";
+
+  // Forex normalization: EURJPY -> EURJPY=X
+  if (type === "forex" || (s.length === 6 && !s.includes(".") && !s.includes("-") && !s.includes("="))) {
+    if (!s.endsWith("=X")) return `${s}=X`;
+  }
+
+  // Indonesian Stocks fallback
+  if (type === "saham" && s.length === 4 && !s.includes(".") && !s.startsWith("^")) {
+    return `${s}.JK`;
+  }
+
+  // Crypto normalization
   if (s.endsWith("USDT")) {
     return s.replace("USDT", "-USD");
   }
 
-  // Generic crypto fallback if no common separators
-  if (!s.includes("-") && !s.includes(".") && !s.includes("=") && s.length >= 3 && !s.startsWith("^")) {
-    if (["BTC", "ETH", "SOL", "BNB", "DOGE", "ADA", "XRP"].includes(s)) {
-      return `${s}-USD`;
-    }
-  }
   return s;
 }
 
@@ -125,7 +133,7 @@ async function startServer() {
           return res.json(formattedData);
         } catch (binanceError) {
           console.warn(`Binance fetch failed for ${symbol}, trying Yahoo fallback...`);
-          targetSymbol = normalizeForYahoo(symbol as string);
+          targetSymbol = normalizeForYahoo(symbol as string, type as string);
           // Continue to the Yahoo Finance block below
         }
       }
@@ -133,7 +141,7 @@ async function startServer() {
       // Yahoo Finance Block (or fallback for crypto)
       if (type !== "crypto" || targetSymbol.includes("-USD") || targetSymbol.includes("-BTC")) {
         // Ensure symbol is Yahoo-friendly
-        targetSymbol = normalizeForYahoo(targetSymbol);
+        targetSymbol = normalizeForYahoo(targetSymbol, type as string);
 
         // Auto-fix common issues for Indonesian stocks (standard BEI tickers are 4 letters)
         if (type === "saham" && targetSymbol.length === 4 && !targetSymbol.includes(".") && !targetSymbol.startsWith("^")) {
@@ -290,7 +298,7 @@ async function startServer() {
 
     try {
       // Normalize before fetching
-      targetSymbol = normalizeForYahoo(targetSymbol);
+      targetSymbol = normalizeForYahoo(targetSymbol, "saham");
 
       // Validate symbol: don't even try if it's clearly crypto-like or index from frontend
       if (targetSymbol.includes("-USD") || targetSymbol.includes("-BTC")) {
@@ -387,7 +395,7 @@ async function startServer() {
         return res.json(results);
       } else {
         // Yahoo Finance can fetch multiple quotes at once
-        const yahooSymbols = symbolList.map(s => normalizeForYahoo(s));
+        const yahooSymbols = symbolList.map(s => normalizeForYahoo(s, category as string));
         try {
           // Add timeout for Yahoo
           const quotes = await Promise.race([
@@ -407,7 +415,7 @@ async function startServer() {
           // Fallback to sequential if batch fails
           const results = await Promise.all(yahooSymbols.map(async (s) => {
              try {
-                const q = await yahooFinance.quote(s);
+                const q = await yahooFinance.quote(s) as any;
                 return {
                   symbol: s,
                   price: q.regularMarketPrice ?? 0,
