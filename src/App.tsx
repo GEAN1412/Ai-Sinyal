@@ -219,94 +219,82 @@ export default function App() {
   const priceChangePct = data.length > 1 && data[data.length - 2]?.close ? (priceChange / data[data.length - 2].close) * 100 : 0;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white font-sans selection:bg-emerald-500/30">
-      {/* Header */}
-      <header className="border-b border-white/10 bg-black/50 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+    <div className="min-h-screen bg-[#0a0a0a] text-white font-sans selection:bg-emerald-500/30 pb-20 sm:pb-0">
+      {/* Header Mobile / Desktop optimized */}
+      <header className="border-b border-white/10 bg-black/80 backdrop-blur-xl sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 h-14 sm:h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="p-2 bg-emerald-500/10 rounded-lg">
-              <BrainCircuit className="w-6 h-6 text-emerald-500" />
+            <div className="p-1.5 sm:p-2 bg-emerald-500/10 rounded-lg">
+              <BrainCircuit className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-500" />
             </div>
-            <h1 className="font-bold text-xl tracking-tight hidden sm:block">
-              AI Trade <span className="text-emerald-500">Signal Bot</span>
+            <h1 className="font-black text-base sm:text-xl tracking-tighter">
+              AI<span className="hidden xs:inline"> Trade</span> <span className="text-emerald-500">Signal</span>
             </h1>
           </div>
           
-          <div className="flex flex-col sm:flex-row items-center gap-3">
-            <div className="hidden md:flex bg-white/5 border border-white/10 rounded-xl p-1 gap-1">
-              {CATEGORIES.map(cat => (
-                <button
-                  key={cat.id}
-                  onClick={() => setCategory(cat.id as MarketType)}
-                  className={cn(
-                    "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all",
-                    category === cat.id ? "bg-emerald-500 text-black shadow-lg" : "text-white/40 hover:text-white"
-                  )}
-                >
-                  {cat.icon}
-                  {cat.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-2 mr-2">
               <div className="relative group">
                 <input 
                   type="text" 
                   value={symbol}
                   onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-                  placeholder="Input Kode (e.g. BBCA.JK)"
-                  className="bg-white/5 border border-white/10 rounded-lg pl-3 pr-8 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-mono w-48"
+                  placeholder="Kode"
+                  className="bg-white/5 border border-white/10 rounded-lg pl-3 pr-8 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-mono w-32"
                 />
-                <Navigation className="w-3 h-3 text-white/20 absolute right-3 top-1/2 -translate-y-1/2 group-focus-within:text-emerald-500 transition-colors" />
+                <Navigation className="w-3 h-3 text-white/20 absolute right-3 top-1/2 -translate-y-1/2 group-focus-within:text-emerald-500" />
               </div>
-              
-              <select 
-                value={symbol}
-                onChange={(e) => setSymbol(e.target.value)}
-                className="bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-mono max-w-[40px]"
-              >
-                {SYMBOLS[category].map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-              </select>
             </div>
 
-            <select 
-              value={interval}
-              onChange={(e) => setInterval(e.target.value)}
-              className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
-            >
-              {INTERVALS.map(i => <option key={i.value} value={i.value}>{i.label}</option>)}
-            </select>
-            <button 
-              onClick={() => setShowDashboard(!showDashboard)}
-              className={cn(
-                "p-2 rounded-lg transition-colors",
-                showDashboard ? "bg-emerald-500/20 text-emerald-500" : "bg-white/5 text-white/40 hover:text-white"
-              )}
-              title="Toggle Dashboard"
-            >
-              <BarChart3 className="w-5 h-5" />
-            </button>
-            <button 
-              onClick={() => setShowSettings(true)}
-              className="p-2 hover:bg-white/5 rounded-lg transition-colors group"
-              title="Settings"
-            >
-              <Settings className="w-4 h-4 text-white/60 group-hover:text-white" />
-            </button>
-            <button 
-              onClick={fetchData}
-              disabled={loading}
-              className="p-2 hover:bg-white/5 rounded-lg transition-colors group"
-            >
-              <RefreshCw className={cn("w-4 h-4 text-white/60 group-hover:text-white", loading && "animate-spin")} />
-            </button>
+            <div className="flex items-center gap-1 sm:gap-2">
+              <button 
+                onClick={fetchData}
+                disabled={loading}
+                className="p-2 hover:bg-white/5 rounded-lg transition-colors group"
+              >
+                <RefreshCw className={cn("w-4 h-4 text-white/60 group-hover:text-white", loading && "animate-spin")} />
+              </button>
+              <button 
+                onClick={() => setShowDashboard(!showDashboard)}
+                className={cn(
+                  "p-2 rounded-lg transition-colors",
+                  showDashboard ? "bg-emerald-500/20 text-emerald-500" : "bg-white/5 text-white/40"
+                )}
+              >
+                <BarChart3 className="w-4 h-4 sm:w-5 h-5" />
+              </button>
+              <button 
+                onClick={() => setShowSettings(true)}
+                className="p-2 hover:bg-white/5 rounded-lg transition-colors group"
+              >
+                <Settings className="w-4 h-4 text-white/60 group-hover:text-white" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Global Category Switcher - Mobile focused tabs */}
+        <div className="border-t border-white/5 bg-black/30 overflow-x-auto no-scrollbar">
+          <div className="max-w-7xl mx-auto px-4 py-1.5 flex items-center gap-1 min-w-max">
+            {CATEGORIES.map(cat => (
+              <button
+                key={cat.id}
+                onClick={() => setCategory(cat.id as MarketType)}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap",
+                  category === cat.id ? "bg-emerald-500 text-black shadow-lg" : "text-white/40 hover:text-white"
+                )}
+              >
+                {cat.icon}
+                {cat.label}
+              </button>
+            ))}
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
-        {/* Dashboards Ringkasan */}
+      <main className="max-w-7xl mx-auto p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
+        {/* Dashboards Ringkasan - Mobile Optimized Grid */}
         <AnimatePresence mode="popLayout">
           {showDashboard && (
             <motion.div 
@@ -316,7 +304,7 @@ export default function App() {
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden"
             >
-              <div className="flex flex-col md:flex-row gap-4 mb-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-2">
                 <MarketResumeCard 
                   title="Crypto Trending" 
                   category="crypto" 
@@ -471,31 +459,56 @@ export default function App() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Chart Area */}
           <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 overflow-hidden">
-              <div className="flex items-center justify-between mb-8">
-                <div>
-                  <h2 className="text-3xl font-bold font-mono tracking-tighter">
-                    {formatCurrency(currentPrice, symbol, category)}
-                  </h2>
-                  <div className={cn(
-                    "flex items-center gap-1 text-sm font-medium mt-1",
-                    priceChange >= 0 ? "text-emerald-500" : "text-rose-500"
-                  )}>
-                    {priceChange >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                    {priceChange >= 0 ? "+" : ""}{priceChangePct.toFixed(2)}%
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 sm:p-6 overflow-hidden">
+              {/* Symbol selector mobile optimized */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
+                <div className="flex items-center justify-between sm:justify-start gap-4">
+                  <div>
+                    <h2 className="text-2xl sm:text-3xl font-bold font-mono tracking-tighter">
+                      {formatCurrency(currentPrice, symbol, category)}
+                    </h2>
+                    <div className={cn(
+                      "flex items-center gap-1 text-xs sm:text-sm font-medium mt-0.5",
+                      priceChange >= 0 ? "text-emerald-500" : "text-rose-500"
+                    )}>
+                      {priceChange >= 0 ? <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4" /> : <TrendingDown className="w-3 h-3 sm:w-4 sm:h-4" />}
+                      {priceChange >= 0 ? "+" : ""}{priceChangePct.toFixed(2)}%
+                    </div>
+                  </div>
+
+                  <div className="sm:hidden flex items-center gap-2">
+                    <select 
+                      value={interval}
+                      onChange={(e) => setInterval(e.target.value)}
+                      className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs focus:ring-emerald-500 font-bold"
+                    >
+                      {INTERVALS.map(i => <option key={i.value} value={i.value}>{i.label}</option>)}
+                    </select>
                   </div>
                 </div>
-                <div className="flex flex-col items-end gap-1">
-                  <span className="text-xs uppercase tracking-widest text-white/40 font-semibold">Volume (24h)</span>
-                  <span className="font-mono text-sm">
-                    {data.length > 0 ? (data[data.length - 1].volume).toLocaleString() : "0"}
-                  </span>
+
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 sm:flex-none relative">
+                    <select 
+                      value={symbol}
+                      onChange={(e) => setSymbol(e.target.value)}
+                      className="w-full sm:w-auto bg-white/10 border border-white/10 rounded-xl px-4 py-2.5 sm:py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-mono font-black"
+                    >
+                      {SYMBOLS[category].map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                    </select>
+                  </div>
+                  <div className="hidden sm:flex flex-col items-end gap-1">
+                    <span className="text-[10px] uppercase tracking-widest text-white/40 font-bold">Volume (24h)</span>
+                    <span className="font-mono text-sm">
+                      {data.length > 0 ? (data[data.length - 1].volume).toLocaleString() : "0"}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              <div className="h-[400px] w-full">
+              <div className="h-[300px] sm:h-[400px] w-full">
                 {!loading && data.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%" minHeight={400} minWidth={1}>
+                  <ResponsiveContainer width="100%" height="100%" minHeight={300} minWidth={1}>
                     <AreaChart data={data}>
                       <defs>
                         <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
@@ -506,16 +519,18 @@ export default function App() {
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
                       <XAxis 
                         dataKey="time" 
-                        stroke="rgba(255,255,255,0.3)" 
-                        fontSize={11}
+                        stroke="rgba(255,255,255,0.2)" 
+                        fontSize={10}
                         tickFormatter={(val) => format(val, 'HH:mm')}
-                        minTickGap={30}
+                        minTickGap={20}
+                        tick={{ fill: 'rgba(255,255,255,0.4)' }}
                       />
                       <YAxis 
                         domain={['auto', 'auto']} 
                         orientation="right"
-                        stroke="rgba(255,255,255,0.3)" 
-                        fontSize={11}
+                        stroke="rgba(255,255,255,0.2)" 
+                        fontSize={10}
+                        tick={{ fill: 'rgba(255,255,255,0.4)' }}
                         tickFormatter={(val) => {
                           const formatted = formatCurrency(val, symbol, category);
                           return formatted.replace(/[^\d.,]/g, '').trim();
@@ -523,9 +538,9 @@ export default function App() {
                       />
                       <Tooltip 
                         contentStyle={{ backgroundColor: '#141414', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
-                        labelStyle={{ color: 'rgba(255,255,255,0.5)' }}
-                        labelFormatter={(val) => format(val, 'MMM dd, yyyy HH:mm')}
-                        itemStyle={{ color: '#fff', fontWeight: 'bold' }}
+                        labelStyle={{ color: 'rgba(255,255,255,0.5)', fontSize: '10px' }}
+                        labelFormatter={(val) => format(val, 'MMM dd, HH:mm')}
+                        itemStyle={{ color: '#fff', fontWeight: 'bold', fontSize: '12px' }}
                         formatter={(val: number) => [formatCurrency(val, symbol, category), "Price"]}
                       />
                       <Area 
@@ -541,8 +556,8 @@ export default function App() {
                   </ResponsiveContainer>
                 ) : (
                   <div className="h-full w-full flex flex-col items-center justify-center bg-white/5 border border-dashed border-white/10 rounded-2xl gap-3">
-                    <RefreshCw className={cn("w-8 h-8 text-white/10", loading && "animate-spin")} />
-                    <p className="text-[10px] uppercase tracking-widest text-white/20 font-bold">
+                    <RefreshCw className={cn("w-6 h-6 sm:w-8 sm:h-8 text-white/10", loading && "animate-spin")} />
+                    <p className="text-[9px] sm:text-[10px] uppercase tracking-widest text-white/20 font-bold text-center px-4">
                       {loading ? "Memuat Data Pasar..." : "Data Tidak Tersedia"}
                     </p>
                   </div>
@@ -551,20 +566,20 @@ export default function App() {
             </div>
 
             {/* Quick Stats Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
               {[
-                { label: "High", value: Math.max(...data.map(d => d.high), 0), icon: <Activity className="w-4 h-4" /> },
-                { label: "Low", value: Math.min(...data.map(d => d.low), 9999999), icon: <Activity className="w-4 h-4 rotate-180" /> },
-                { label: "Average", value: data.reduce((acc, d) => acc + d.close, 0) / (data.length || 1), icon: <BarChart3 className="w-4 h-4" /> },
-                { label: "Data Points", value: data.length, icon: <Clock className="w-4 h-4" /> },
+                { label: "High", value: Math.max(...data.map(d => d.high), 0), icon: <Activity className="w-3 h-3 sm:w-4 h-4 text-emerald-400" /> },
+                { label: "Low", value: Math.min(...data.map(d => d.low), 9999999), icon: <Activity className="w-3 h-3 sm:w-4 h-4 text-rose-400 rotate-180" /> },
+                { label: "Average", value: data.reduce((acc, d) => acc + d.close, 0) / (data.length || 1), icon: <BarChart3 className="w-3 h-3 sm:w-4 h-4 text-blue-400" /> },
+                { label: "Points", value: data.length, icon: <Clock className="w-3 h-3 sm:w-4 h-4 text-white/20" /> },
               ].map((stat, i) => (
-                <div key={i} className="bg-white/5 border border-white/10 p-4 rounded-xl">
-                  <div className="flex items-center gap-2 text-white/40 text-xs uppercase tracking-widest mb-1 font-semibold">
+                <div key={i} className="bg-white/5 border border-white/10 p-3 sm:p-4 rounded-xl">
+                  <div className="flex items-center gap-2 text-white/40 text-[9px] sm:text-xs uppercase tracking-widest mb-1 font-bold">
                     {stat.icon}
                     {stat.label}
                   </div>
-                  <div className="font-mono font-bold">
-                    {typeof stat.value === 'number' && stat.label !== 'Data Points' 
+                  <div className="font-mono text-sm sm:text-base font-bold">
+                    {typeof stat.value === 'number' && stat.label !== 'Points' 
                       ? formatCurrency(stat.value, symbol, category)
                       : stat.value}
                   </div>
@@ -622,16 +637,16 @@ export default function App() {
           </div>
 
           {/* AI Signal Sidebar */}
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             <button 
               onClick={handleAnalyze}
               disabled={analyzing || loading}
-              className="w-full h-14 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:bg-white/10 text-black font-bold rounded-2xl flex items-center justify-center gap-3 transition-all transform active:scale-[0.98] shadow-lg shadow-emerald-500/20"
+              className="w-full h-14 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:bg-white/10 text-black font-black rounded-2xl flex items-center justify-center gap-3 transition-all transform active:scale-[0.98] shadow-lg shadow-emerald-500/20"
             >
               {analyzing ? (
                 <>
                   <RefreshCw className="w-5 h-5 animate-spin" />
-                  MENGANALISIS PASAR...
+                  ANALYZING...
                 </>
               ) : (
                 <>
@@ -650,81 +665,81 @@ export default function App() {
                   className="bg-white/5 border border-white/10 rounded-3xl overflow-hidden shadow-2xl relative"
                 >
                   {/* Confidence Badge */}
-                  <div className="absolute top-4 right-4 bg-black/40 backdrop-blur-sm px-2 py-1 rounded-full border border-white/10 flex items-center gap-1.5">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-[10px] uppercase tracking-tighter font-bold text-white/80">
+                  <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-2 py-1 rounded-full border border-white/10 flex items-center gap-1.5 z-10">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-[10px] uppercase tracking-tighter font-black text-white/90">
                       {signal.confidence}% Confidence
                     </span>
                   </div>
 
                   <div className={cn(
-                    "h-2",
+                    "h-1.5",
                     signal.action === "BUY" ? "bg-emerald-500" : signal.action === "SELL" ? "bg-rose-500" : "bg-amber-500"
                   )} />
                   
-                  <div className="p-6 space-y-6">
+                  <div className="p-5 sm:p-6 space-y-5 sm:space-y-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="text-white/40 text-xs font-bold uppercase tracking-[0.2em] mb-1 italic">Rekomendasi</h3>
+                        <h3 className="text-white/40 text-[10px] font-bold uppercase tracking-[0.2em] mb-1 italic">Rekomendasi</h3>
                         <div className={cn(
-                          "text-4xl font-black italic tracking-tighter",
+                          "text-3xl sm:text-4xl font-black italic tracking-tighter",
                           signal.action === "BUY" ? "text-emerald-500" : signal.action === "SELL" ? "text-rose-500" : "text-amber-500"
                         )}>
                           {signal.action}
                         </div>
                       </div>
                       <div className="text-right">
-                        <h3 className="text-white/40 text-xs font-bold uppercase tracking-[0.2em] mb-1 italic">Harga Entri</h3>
-                        <div className="text-2xl font-mono font-bold">{formatCurrency(signal.price, symbol, category)}</div>
+                        <h3 className="text-white/40 text-[10px] font-bold uppercase tracking-[0.2em] mb-1 italic">Entry</h3>
+                        <div className="text-xl sm:text-2xl font-mono font-bold">{formatCurrency(signal.price, symbol, category)}</div>
                       </div>
                     </div>
 
-                    <div className="bg-black/40 rounded-2xl p-4 border border-white/5">
-                      <h4 className="text-[10px] font-bold uppercase tracking-widest text-emerald-500 mb-2 flex items-center gap-2">
+                    <div className="bg-black/60 rounded-2xl p-4 border border-white/5">
+                      <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-2 flex items-center gap-2 italic">
                         <AlertCircle className="w-3 h-3" />
-                        Analisis AI
+                        AI Reasoning
                       </h4>
-                      <p className="text-sm leading-relaxed text-white/80">
-                        {signal.reasoning}
+                      <p className="text-xs sm:text-sm leading-relaxed text-white/70 italic">
+                        "{signal.reasoning}"
                       </p>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-emerald-500/5 border border-emerald-500/20 p-3 rounded-xl">
-                        <div className="text-emerald-500/50 text-[10px] font-bold uppercase tracking-wider mb-1">Take Profit</div>
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                      <div className="bg-emerald-500/5 border border-emerald-500/10 p-3 rounded-xl">
+                        <div className="text-emerald-500/40 text-[9px] font-bold uppercase tracking-wider mb-1">Target TP</div>
                         <div className="space-y-1">
                           {signal.targets.map((t, idx) => (
-                            <div key={idx} className="font-mono text-sm text-emerald-400 font-bold flex items-center gap-2">
-                              <TrendingUp className="w-3 h-3" />
+                            <div key={idx} className="font-mono text-xs sm:text-sm text-emerald-400 font-bold flex items-center gap-2">
+                              <TrendingUp className="w-3 h-3 opacity-50" />
                               {formatCurrency(t, symbol, category)}
                             </div>
                           ))}
                         </div>
                       </div>
-                      <div className="bg-rose-500/5 border border-rose-500/20 p-3 rounded-xl text-right">
-                        <div className="text-rose-500/50 text-[10px] font-bold uppercase tracking-wider mb-1">Stop Loss</div>
-                        <div className="font-mono text-sm text-rose-400 font-bold flex items-center justify-end gap-2">
+                      <div className="bg-rose-500/5 border border-rose-500/10 p-3 rounded-xl text-right">
+                        <div className="text-rose-500/40 text-[9px] font-bold uppercase tracking-wider mb-1">Stop Loss</div>
+                        <div className="font-mono text-xs sm:text-sm text-rose-400 font-bold flex items-center justify-end gap-2">
                           {formatCurrency(signal.stopLoss, symbol, category)}
-                          <TrendingDown className="w-3 h-3" />
+                          <TrendingDown className="w-3 h-3 opacity-50" />
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 text-[10px] text-white/20 font-bold uppercase tracking-widest pt-2">
+                    <div className="flex items-center gap-2 text-[9px] text-white/20 font-bold uppercase tracking-widest pt-2 border-t border-white/5">
                       <Clock className="w-3 h-3" />
-                      Waktu Sinyal: {format(signal.timestamp, 'HH:mm:ss')}
+                      Generated at: {format(signal.timestamp, 'HH:mm:ss')}
                     </div>
                   </div>
                 </motion.div>
               ) : (
-                <div className="bg-white/5 border border-dashed border-white/10 rounded-3xl p-12 flex flex-col items-center justify-center text-center gap-4">
+                <div className="bg-white/5 border border-dashed border-white/10 rounded-3xl p-8 sm:p-12 flex flex-col items-center justify-center text-center gap-4">
                   <div className="p-4 bg-white/5 rounded-full">
-                    <Navigation className="w-8 h-8 text-white/10" />
+                    <Navigation className="w-6 h-6 sm:w-8 sm:h-8 text-white/5" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold uppercase tracking-widest mb-1">Belum Ada Sinyal</h3>
-                    <p className="text-xs text-white/30 leading-relaxed max-w-[200px]">
-                      Klik tombol di atas untuk menganalisis pergerakan harga saat ini.
+                    <h3 className="text-xs font-bold uppercase tracking-widest mb-1 text-white/40">Sinyal Kosong</h3>
+                    <p className="text-[10px] text-white/20 leading-relaxed max-w-[160px] font-bold">
+                      Klik tombol di atas untuk memulai analisis pasar.
                     </p>
                   </div>
                 </div>

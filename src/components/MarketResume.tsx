@@ -52,26 +52,26 @@ export const MarketResumeCard: React.FC<SummaryProps> = ({ title, category, symb
   }, []);
 
   return (
-    <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex-1">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-white/60 text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+    <div className="bg-white/5 border border-white/10 rounded-2xl p-3 sm:p-4 flex-1">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-white/60 text-[10px] sm:text-xs font-bold uppercase tracking-widest flex items-center gap-2">
           {title}
           {loading && <RefreshCcw className="w-3 h-3 animate-spin text-white/40" />}
         </h3>
       </div>
-      <div className="space-y-3">
+      <div className="space-y-1.5 sm:space-y-3">
         {data.map((item, idx) => (
           <div key={idx} className="flex items-center justify-between group cursor-pointer hover:bg-white/5 p-1 rounded-lg transition-all">
-            <span className="font-mono text-xs font-bold text-white/80 uppercase">
+            <span className="font-mono text-[10px] sm:text-xs font-bold text-white/80 uppercase">
                 {(item.symbol || '').replace('=X', '').replace('.JK', '').replace('USDT', '')}
             </span>
             <div className="text-right">
-              <div className="font-mono text-sm font-bold">{formatCurrency(item.price, item.symbol, category as any)}</div>
+              <div className="font-mono text-xs sm:text-sm font-bold">{formatCurrency(item.price, item.symbol, category as any)}</div>
               <div className={cn(
-                "text-[10px] font-bold flex items-center justify-end gap-1",
+                "text-[9px] sm:text-[10px] font-bold flex items-center justify-end gap-0.5",
                 item.change >= 0 ? "text-emerald-400" : "text-rose-400"
               )}>
-                {item.change >= 0 ? <TrendingUp className="w-2 h-2" /> : <TrendingDown className="w-2 h-2" />}
+                {item.change >= 0 ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
                 {Math.abs(item.change).toFixed(2)}%
               </div>
             </div>
