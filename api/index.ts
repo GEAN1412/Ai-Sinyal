@@ -3,15 +3,18 @@ import path from "path";
 import { fileURLToPath } from "url";
 import axios from "axios";
 import cors from "cors";
-import yahooFinance from "yahoo-finance2";
+import yahooFinanceModule from "yahoo-finance2";
+const yf = new (yahooFinanceModule as any)();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Configure Yahoo Finance
-(yahooFinance as any).setGlobalConfig({
-  validation: { logErrors: false, errorHandler: () => {} }
-});
+// Configuration for Yahoo Finance - remove invalid setGlobalConfig call
+if (yf.setGlobalConfig) {
+  yf.setGlobalConfig({
+    validation: { logErrors: false, errorHandler: () => {} }
+  });
+}
 
 // Simple in-memory cache
 const cache = new Map<string, { data: any; timestamp: number }>();
@@ -179,18 +182,18 @@ async function startServer() {
             };
 
             // Use chart for everything as it's more robust in v2/v3
-            result = await yahooFinance.chart(targetSymbol, queryOptions, { validateResult: false });
+            result = await yf.chart(targetSymbol, queryOptions, { validateResult: false });
 
             // Fallback for Gold if Spot fails
             if ((!result || !result.quotes || result.quotes.length === 0) && targetSymbol === "GC=F") {
                const altSymbol = "XAUUSD=X";
-               result = await yahooFinance.chart(altSymbol, queryOptions, { validateResult: false });
+               result = await yf.chart(altSymbol, queryOptions, { validateResult: false });
             }
 
             // Fallback for Silver if Spot fails
             if ((!result || !result.quotes || result.quotes.length === 0) && targetSymbol === "XAGUSD=X") {
                const altSymbol = "SI=F"; // Silver Futures as fallback
-               result = await yahooFinance.chart(altSymbol, queryOptions, { validateResult: false });
+               result = await yf.chart(altSymbol, queryOptions, { validateResult: false });
             }
 
             if (!result || !result.quotes) return [];
@@ -264,7 +267,7 @@ async function startServer() {
 
     try {
       // Use search which is more tolerant than specific news modules
-      const result: any = await yahooFinance.search(searchQuery);
+      const result: any = await yf.search(searchQuery);
       
       const news = result.news?.map((n: any) => ({
         title: n.title,
@@ -308,7 +311,7 @@ async function startServer() {
       // Fetch deep financial modules with robust error handling
       let summary: any = null;
       try {
-        summary = await yahooFinance.quoteSummary(targetSymbol, {
+        summary = await yf.quoteSummary(targetSymbol, {
           modules: [
             "defaultKeyStatistics",
             "financialData",
@@ -399,7 +402,7 @@ async function startServer() {
         try {
           // Add timeout for Yahoo
           const quotes = await Promise.race([
-            yahooFinance.quote(yahooSymbols),
+            yf.quote(yahooSymbols),
             new Promise((_, reject) => setTimeout(() => reject(new Error("Yahoo Quote Timeout")), 10000))
           ]) as any;
 
@@ -415,7 +418,7 @@ async function startServer() {
           // Fallback to sequential if batch fails
           const results = await Promise.all(yahooSymbols.map(async (s) => {
              try {
-                const q = await yahooFinance.quote(s) as any;
+                const q = await yf.quote(s) as any;
                 return {
                   symbol: s,
                   price: q.regularMarketPrice ?? 0,
@@ -437,7 +440,8 @@ async function startServer() {
 
   app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 
-  if (process.env.NODE_ENV !== "production" && process.env.VERCEL !== "1") {
+  // Vite middleware setup
+  if (process.env.NODE_ENV !== "production") {
     console.log("Initializing Vite dev server...");
     const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
@@ -445,8 +449,7 @@ async function startServer() {
       appType: "spa",
     });
     app.use(vite.middlewares);
-  } else if (process.env.VERCEL !== "1") {
-    // Local production only
+  } else {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
     app.get("*", (req, res) => {
@@ -455,19 +458,12 @@ async function startServer() {
     });
   }
 
-  // Only listen if not in serverless environment
-  if (process.env.VERCEL !== "1") {
-    app.listen(PORT, "0.0.0.0", () => {
-      console.log(`Server listening on http://0.0.0.0:${PORT}`);
-    });
-  }
-
-  return app;
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server listening on http://0.0.0.0:${PORT}`);
+  });
 }
 
-const appPromise = startServer();
-
-export default async (req: any, res: any) => {
-  const app = await appPromise;
-  return app(req, res);
-};
+startServer().catch(err => {
+  console.error("Failed to start server:", err);
+  process.exit(1);
+});

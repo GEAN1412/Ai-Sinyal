@@ -73,18 +73,19 @@ export const generateSignal = async (symbol: string, data: MarketData[], news?: 
 
     try {
       const response = await ai.models.generateContent({
-        model: "gemini-flash-latest",
-        contents: [{ parts: [{ text: prompt }] }],
+        model: "gemini-3-flash-preview",
+        contents: prompt,
         config: {
           responseMimeType: "application/json"
         }
       });
 
-      if (!response.text) {
+      const text = response.text;
+      if (!text) {
         throw new Error("AI tidak memberikan respon teks.");
       }
 
-      const aiResult = JSON.parse(response.text);
+      const aiResult = JSON.parse(text);
       
       return {
         symbol,
@@ -92,19 +93,8 @@ export const generateSignal = async (symbol: string, data: MarketData[], news?: 
         timestamp: Date.now()
       };
     } catch (modelError: any) {
-      console.warn("Model gemini-flash-latest failed, trying gemini-3-flash-preview...", modelError.message);
-      // Fallback
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [{ parts: [{ text: prompt }] }],
-        config: {
-          responseMimeType: "application/json"
-        }
-      });
-      
-      if (!response.text) throw new Error("AI tidak memberikan respon teks.");
-      const aiResult = JSON.parse(response.text);
-      return { symbol, ...aiResult, timestamp: Date.now() };
+      console.warn("AI Analysis failed:", modelError.message);
+      throw new Error(`Gagal Analisa AI: ${modelError.message}`);
     }
   } catch (error: any) {
     console.error("AI Signal Generation Error:", error.message);
