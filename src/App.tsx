@@ -494,51 +494,59 @@ export default function App() {
               </div>
 
               <div className="h-[400px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={data}>
-                    <defs>
-                      <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={priceChange >= 0 ? "#10b981" : "#f43f5e"} stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor={priceChange >= 0 ? "#10b981" : "#f43f5e"} stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                    <XAxis 
-                      dataKey="time" 
-                      stroke="rgba(255,255,255,0.3)" 
-                      fontSize={11}
-                      tickFormatter={(val) => format(val, 'HH:mm')}
-                      minTickGap={30}
-                    />
-                    <YAxis 
-                      domain={['auto', 'auto']} 
-                      orientation="right"
-                      stroke="rgba(255,255,255,0.3)" 
-                      fontSize={11}
-                      tickFormatter={(val) => {
-                        const formatted = formatCurrency(val, symbol, category);
-                        // Removing the currency symbol for ticks to keep it clean, but preserving the locale formatting
-                        return formatted.replace(/[^\d.,]/g, '').trim();
-                      }}
-                    />
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: '#141414', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
-                      labelStyle={{ color: 'rgba(255,255,255,0.5)' }}
-                      labelFormatter={(val) => format(val, 'MMM dd, yyyy HH:mm')}
-                      itemStyle={{ color: '#fff', fontWeight: 'bold' }}
-                      formatter={(val: number) => [formatCurrency(val, symbol, category), "Price"]}
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="close" 
-                      stroke={priceChange >= 0 ? "#10b981" : "#f43f5e"} 
-                      strokeWidth={2}
-                      fillOpacity={1} 
-                      fill="url(#colorPrice)" 
-                      animationDuration={1000}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+                {!loading && data.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%" minHeight={400} minWidth={1}>
+                    <AreaChart data={data}>
+                      <defs>
+                        <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor={priceChange >= 0 ? "#10b981" : "#f43f5e"} stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor={priceChange >= 0 ? "#10b981" : "#f43f5e"} stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                      <XAxis 
+                        dataKey="time" 
+                        stroke="rgba(255,255,255,0.3)" 
+                        fontSize={11}
+                        tickFormatter={(val) => format(val, 'HH:mm')}
+                        minTickGap={30}
+                      />
+                      <YAxis 
+                        domain={['auto', 'auto']} 
+                        orientation="right"
+                        stroke="rgba(255,255,255,0.3)" 
+                        fontSize={11}
+                        tickFormatter={(val) => {
+                          const formatted = formatCurrency(val, symbol, category);
+                          return formatted.replace(/[^\d.,]/g, '').trim();
+                        }}
+                      />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#141414', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
+                        labelStyle={{ color: 'rgba(255,255,255,0.5)' }}
+                        labelFormatter={(val) => format(val, 'MMM dd, yyyy HH:mm')}
+                        itemStyle={{ color: '#fff', fontWeight: 'bold' }}
+                        formatter={(val: number) => [formatCurrency(val, symbol, category), "Price"]}
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="close" 
+                        stroke={priceChange >= 0 ? "#10b981" : "#f43f5e"} 
+                        strokeWidth={2}
+                        fillOpacity={1} 
+                        fill="url(#colorPrice)" 
+                        animationDuration={1000}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full w-full flex flex-col items-center justify-center bg-white/5 border border-dashed border-white/10 rounded-2xl gap-3">
+                    <RefreshCw className={cn("w-8 h-8 text-white/10", loading && "animate-spin")} />
+                    <p className="text-[10px] uppercase tracking-widest text-white/20 font-bold">
+                      {loading ? "Memuat Data Pasar..." : "Data Tidak Tersedia"}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 

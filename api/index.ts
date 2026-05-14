@@ -3,14 +3,18 @@ import path from "path";
 import { fileURLToPath } from "url";
 import axios from "axios";
 import cors from "cors";
-import yahooFinanceModule from "yahoo-finance2";
-const yf = new (yahooFinanceModule as any)();
+import * as yfModule from "yahoo-finance2";
+// Robust instantiation for Yahoo Finance v2/v3
+const YahooFinanceConstructor = (yfModule as any).default || yfModule;
+const yf = typeof YahooFinanceConstructor === 'function' 
+  ? new YahooFinanceConstructor() 
+  : YahooFinanceConstructor;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Configuration for Yahoo Finance - remove invalid setGlobalConfig call
-if (yf.setGlobalConfig) {
+// Configuration for Yahoo Finance
+if (yf && typeof yf.setGlobalConfig === 'function') {
   yf.setGlobalConfig({
     validation: { logErrors: false, errorHandler: () => {} }
   });
@@ -182,18 +186,30 @@ async function startServer() {
             };
 
             // Use chart for everything as it's more robust in v2/v3
-            result = await yf.chart(targetSymbol, queryOptions, { validateResult: false });
+            try {
+              result = await yf.chart(targetSymbol, queryOptions, { validateResult: false });
+            } catch (chartErr: any) {
+              console.error(`Yahoo chart error for ${targetSymbol}:`, chartErr.message);
+            }
 
             // Fallback for Gold if Spot fails
             if ((!result || !result.quotes || result.quotes.length === 0) && targetSymbol === "GC=F") {
                const altSymbol = "XAUUSD=X";
-               result = await yf.chart(altSymbol, queryOptions, { validateResult: false });
+               try {
+                 result = await yf.chart(altSymbol, queryOptions, { validateResult: false });
+               } catch (e) {
+                 console.error(`Yahoo chart fallback failed for ${altSymbol}`);
+               }
             }
 
             // Fallback for Silver if Spot fails
             if ((!result || !result.quotes || result.quotes.length === 0) && targetSymbol === "XAGUSD=X") {
                const altSymbol = "SI=F"; // Silver Futures as fallback
-               result = await yf.chart(altSymbol, queryOptions, { validateResult: false });
+               try {
+                 result = await yf.chart(altSymbol, queryOptions, { validateResult: false });
+               } catch (e) {
+                 console.error(`Yahoo chart fallback failed for ${altSymbol}`);
+               }
             }
 
             if (!result || !result.quotes) return [];
@@ -419,12 +435,16 @@ async function startServer() {
           const results = await Promise.all(yahooSymbols.map(async (s) => {
              try {
                 const q = await yf.quote(s) as any;
+                if (!q) {
+                   console.warn(`Yahoo sequential quote failed for ${s}: result is null`);
+                }
                 return {
                   symbol: s,
-                  price: q.regularMarketPrice ?? 0,
-                  change: q.regularMarketChangePercent ?? 0
+                  price: q?.regularMarketPrice ?? 0,
+                  change: q?.regularMarketChangePercent ?? 0
                 };
              } catch (e: any) {
+                console.error(`Individual sequential fetch failed for ${s}:`, e.message);
                 return { symbol: s, price: 0, change: 0, error: true };
              }
           }));
